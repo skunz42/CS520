@@ -19,9 +19,11 @@ int read_input(const char * filename, int *input_array, int array_length) {
         } else if (strcmp(line, "Bake-Bagel\n") == 0) {
             input_array[line_num] = BAKE_BAGEL;
             bagel_baked++;
+            baking_count++;
         } else if (strcmp(line, "Bake-Baguette\n") == 0) {
             input_array[line_num] = BAKE_BAGUETTE;
             baguette_baked++;
+            baking_count++;
         } else {
             input_array[line_num] = INVALID_REQUEST;
         }
@@ -62,7 +64,7 @@ int main(int argc, char *argv[])  {
 
     const char * filename = argv[1];
 
-    baking_count = count_lines(filename);
+    int instruction_count = count_lines(filename);
     if (baking_count < 0) {
         return -1;
     }
@@ -71,10 +73,8 @@ int main(int argc, char *argv[])  {
     bagel_baked = 0;
     baguette_baked = 0;
     
-    printf("%d\n", baking_count);
-
-    int input_array[baking_count];
-    read_input(filename, input_array, baking_count);
+    int input_array[instruction_count];
+    read_input(filename, input_array, instruction_count);
 
     //output formats
     printf("\nBaking count: %d\n", baking_count);
