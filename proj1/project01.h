@@ -21,4 +21,6 @@ typedef struct {
     int stage_num;
     int has_request;
     int request_type;
+
+    int temp_request_type;
 } Stage;
