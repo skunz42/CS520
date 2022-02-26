@@ -5,15 +5,8 @@
 #define NUM_STAGES 12
 
 Stage stages[NUM_STAGES];
-
-int all_stages_clear() {
-    for (int i = 0; i < NUM_STAGES; i++) {
-        if (stages[i].has_request == TRUE) {
-            return FALSE;
-        }
-    }
-    return TRUE;
-}
+int stream_ended;
+int stream_ended_index;
 
 // INITITALIZATION FUNCTIONS
 
@@ -90,30 +83,13 @@ void compute_stocking() {
     if (stages[11].has_request && stages[11].minutes_until_free <= 0) {
         stages[11].has_request = FALSE;
         stages[11].request_type = INVALID_REQUEST;
+        if (stream_ended == TRUE) {
+            stream_ended_index++;
+        }
     }
 }
 
-// Stage 10
-void compute_cooling() {
-    stages[10].minutes_until_free--;
-    if (!stages[11].has_request && stages[10].minutes_until_free <= 0) {
-        stages[11].has_request = TRUE;
-        stages[11].minutes_until_free = 1;
-        stages[10].has_request = FALSE;
-    }
-}
-
-// Stage 9
-void compute_baking() {
-    stages[9].minutes_until_free--;
-    if (!stages[10].has_request && stages[9].minutes_until_free <= 0) {
-        stages[10].has_request = TRUE;
-        stages[10].minutes_until_free = 1;
-        stages[9].has_request = FALSE;
-    }
-}
-
-// Stage 8
+// Stage 8 - pre baking
 void compute_proofing() {
     stages[8].minutes_until_free--;
     if (!stages[9].has_request && stages[8].minutes_until_free <= 0) {
@@ -124,35 +100,58 @@ void compute_proofing() {
             stages[9].minutes_until_free = BAKE_BAGEL;
         }
         stages[8].has_request = FALSE;
+        if (stream_ended == TRUE) {
+            stream_ended_index++;
+        }
     }
 }
 
-// Stage 7
-void compute_shaping() {
-    stages[7].minutes_until_free--;
-    if (!stages[8].has_request && stages[7].minutes_until_free <= 0) {
-        stages[8].has_request = TRUE;
-        stages[8].minutes_until_free = 1;
-        stages[7].has_request = FALSE;
+// Stages 1, 2, 3, 4, 5, 6, 7, 9, 10
+void compute_intermediate_step(int stage_num) {
+    stages[stage_num].minutes_until_free--;
+    if (!stages[stage_num+1].has_request && stages[stage_num].minutes_until_free <= 0) {
+        stages[stage_num+1].has_request = TRUE;
+        stages[stage_num+1].minutes_until_free = 1;
+        stages[stage_num].has_request = FALSE;
+        if (stream_ended == TRUE) {
+            stream_ended_index++;
+        }
+    }
+} 
+
+// Stage 0
+void compute_scaling(int * program_counter, int instruction_count, int *input_array) {
+    stages[0].minutes_until_free--;
+    if (!stages[1].has_request && stages[0].minutes_until_free <= 0 && *program_counter < instruction_count) {
+        stages[1].has_request = TRUE;
+        stages[1].minutes_until_free = 1;
+        stages[0].has_request = FALSE;
+        (*program_counter)++;
+        //Load from instrs
+        if (*program_counter < instruction_count) {
+            stages[0].minutes_until_free = 1;
+            stages[0].has_request = TRUE;
+            stages[0].request_type = input_array[*program_counter];
+        } else {
+            stream_ended = TRUE;
+            stream_ended_index++;
+        }
     }
 }
 
-
-void compute_stage(int stage_num) {
+void compute_stage(int stage_num, int * program_counter, int instruction_count, int *input_array) {
     switch (stage_num) {
         case 11:
             compute_stocking();
             break;
-        case 10:
-            compute_cooling();
-            break;
-        case 9:
-            compute_baking();
-            break;
         case 8:
             compute_proofing();
             break;
+        case 0:
+            compute_scaling(program_counter, instruction_count, input_array);
+            break;
         default:
+            compute_intermediate_step(stage_num);
             break;
     }
 }
@@ -178,12 +177,15 @@ int main(int argc, char *argv[])  {
     read_input(filename, input_array, instruction_count);
 
     initialize_stages();
+    stream_ended = FALSE;
+    stream_ended_index = -1;
 
-    int program_counter = 0;
+    int instructions_processed = 0;
+    bakery_time = 0;
     // Instructions left or still instructions in the pipeline
-    while (program_counter < instruction_count || !all_stages_clear()) {
-        if (program_counter >= instruction_count && !all_stages_clear()) {
-            printf("Still some in pipe\n");
+    while (instructions_processed < instruction_count || stream_ended_index < 11) {
+        if (instructions_processed >= instruction_count) {
+            //printf("%d\n", stream_ended_index);
             break;
         }
         // TODO get instruction
@@ -191,10 +193,12 @@ int main(int argc, char *argv[])  {
         // TODO stage 10
         // TODO ...
         for (int i = NUM_STAGES; i >= 0; i--) {
-            compute_stage(i);
+            compute_stage(i, &instructions_processed, instruction_count, input_array);
         }
-        program_counter++;
+        bakery_time++;
     }
+
+    instructions_processed++;
 
     //output formats
     printf("\nBaking count: %d\n", baking_count);
@@ -202,9 +206,9 @@ int main(int argc, char *argv[])  {
     printf(" - Baguette baked: %d\n", baguette_baked);
     printf("No request: %d\n", no_request);
 
-    /*printf("\nHow many minutes to bake: %d\n", bakery_time);
+    printf("\nHow many minutes to bake: %d\n", bakery_time);
 
-    printf("\nPerformance (bakes/minutes): %.2f\n", performance);*/
+    printf("\nPerformance (bakes/minutes): %.2f\n", performance);
 
     return 0;
 }
