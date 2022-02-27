@@ -93,21 +93,14 @@ int count_lines(const char * filename) {
 
 void compute_stage11() {
     if (stages[11].in_queue > 0) {
-        for (int i = 0; i < stages[11].in_queue - 1; i++) {
-            stages[11].wait_queue[i] = stages[11].wait_queue[i+1];
-        }
         stages[11].in_queue--;
     }
 }
 
 void compute_stage10() {
     if (stages[10].in_queue > 0) {
-//        stages[11].wait_queue[stages[11].in_queue] = stages[10].wait_queue[0];
         stages[11].wait_queue[0] = stages[10].wait_queue[0];
         stages[11].in_queue++;
-//        for (int i = 0; i < stages[10].in_queue - 1; i++) {
-//            stages[10].wait_queue[i] = stages[10].wait_queue[i+1];
-//        }
         stages[10].in_queue--;
     }
 }
@@ -116,16 +109,14 @@ void compute_stage10() {
 void compute_stage9() {
     if (baking_stage_count == 9) {
         baking_stage_count = 0;
+        printf("B");
     } else if (stages[9].in_queue > 0) {
         if (stages[9].wait_queue[0] == BAKE_BAGUETTE) {
             stages[9].wait_queue[0]--;
+            printf("B");
         } else {
-//            stages[10].wait_queue[stages[10].in_queue] = stages[9].wait_queue[0];
             stages[10].wait_queue[0] = stages[9].wait_queue[0];
             stages[10].in_queue++;
-//            for (int i = 0; i < stages[9].in_queue - 1; i++) {
-//                stages[9].wait_queue[i] = stages[9].wait_queue[i+1];
-//            }
             stages[9].in_queue--;
             baking_stage_count++;
         }
@@ -134,12 +125,8 @@ void compute_stage9() {
 
 void compute_intermediate_stages(int active_stage) {
     if (stages[active_stage].in_queue > 0 && stages[active_stage+1].in_queue == 0) {
-        //stages[active_stage+1].wait_queue[stages[active_stage+1].in_queue] = stages[active_stage].wait_queue[0];
         stages[active_stage+1].wait_queue[0] = stages[active_stage].wait_queue[0];
         stages[active_stage+1].in_queue++;
-//        for (int i = 0; i < stages[active_stage].in_queue - 1; i++) {
-//            stages[active_stage].wait_queue[i] = stages[active_stage].wait_queue[i+1];
-//        }
         stages[active_stage].in_queue--;
     } else if (stages[active_stage].in_queue == 0 && stages[active_stage+1].in_queue == 0) {
         stages[active_stage+1].wait_queue[0] = 0;
@@ -149,31 +136,24 @@ void compute_intermediate_stages(int active_stage) {
 void compute_stage1(int * instructions_processed, int * input_array, int instruction_count) {
     // throw to next stage
     if (stages[0].in_queue > 0 && stages[1].in_queue == 0) {
-        //stages[1].wait_queue[stages[1].in_queue] = stages[0].wait_queue[0];
         stages[1].wait_queue[0] = stages[0].wait_queue[0];
         stages[1].in_queue++;
-//        for (int i = 0; i < stages[0].in_queue-1; i++) {
-//            stages[0].wait_queue[i] = stages[0].wait_queue[i+1];
-//        }
         stages[0].in_queue--;
     } else if (stages[0].in_queue == 0 && stages[1].in_queue == 0) {
         stages[1].wait_queue[0] = 0;
     }
 
-    if (bakery_time%1001 == 1000) {
-        start_wait = 10;
-        //printf("%d\n", bakery_time);
-    }
-    if (start_wait > 0) {
-        start_wait--;
-        stages[0].in_queue = 0;
-        stages[0].wait_queue[0] = 0;
-        //printf("BLOCKing\n");
-    } else if (*instructions_processed < instruction_count && stages[0].in_queue == 0) {
-        if (input_array[*instructions_processed] != 0) {
-            stages[0].wait_queue[stages[0].in_queue] = input_array[*instructions_processed];
+//    if (bakery_time%1001 == 1000) {
+//        start_wait = 10;
+//    }
+//    if (start_wait > 0) {
+//        start_wait--;
+//    } else if (*instructions_processed < instruction_count && stages[0].in_queue == 0) {
+    if (*instructions_processed < instruction_count && stages[0].in_queue == 0) {
+//        if (input_array[*instructions_processed] != 0) {
+            stages[0].wait_queue[0] = input_array[*instructions_processed];
             stages[0].in_queue++;
-        }
+//        }
         *instructions_processed = *instructions_processed + 1;
     }
 }
@@ -227,7 +207,7 @@ int main(int argc, char *argv[])  {
         // intermediate, take from queue and toss up
         // baking, take from queue or wait
         // TODO: make queue system work at basic level
-        //if (instructions_processed == 1500) break;
+        if (instructions_processed == 150) break;
         for (int i = NUM_STAGES-1; i >= 0; i--) {
             exec_pipeline(i, &instructions_processed, input_array, instruction_count);
         }
@@ -235,7 +215,7 @@ int main(int argc, char *argv[])  {
             printf("%d\t", stages[0].wait_queue[i]);
         }
         printf("\n");*/
-        //print_stages();
+        print_stages();
         bakery_time++;
     }
 
