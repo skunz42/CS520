@@ -99,12 +99,12 @@ void compute_stage11() {
 }
 
 // baking
-void compute_stage9() { 
-    if (stages[9].in_queue > 0) {
-        if (stages[9].wait_queue[0] == 2) {
+void compute_stage9() {
+    if (baking_stage_count == 9) {
+        baking_stage_count = 0;
+    } else if (stages[9].in_queue > 0) {
+        if (stages[9].wait_queue[0] == BAKE_BAGUETTE) {
             stages[9].wait_queue[0]--;
-        } else if (baking_stage_count == 9) {
-            baking_stage_count = 0;
         } else {
             stages[10].wait_queue[stages[10].in_queue] = stages[9].wait_queue[0];
             stages[10].in_queue++;
@@ -141,7 +141,7 @@ void compute_stage1(int * instructions_processed, int * input_array, int instruc
 
     //TODO wait 10 min every 1k
     // get new value from input
-    if (bakery_time%1000 == 0 && bakery_time != 0) {
+    if (bakery_time%1000 == 999) {
         start_wait = 10;
         //printf("%d\n", bakery_time);
     }
@@ -175,7 +175,7 @@ int main(int argc, char *argv[])  {
     const char * filename = argv[1];
 
     int instruction_count = count_lines(filename);
-    if (baking_count < 0) {
+    if (instruction_count < 0) {
         return -1;
     }
 
@@ -213,6 +213,7 @@ int main(int argc, char *argv[])  {
         bakery_time++;
     }
 
+    baking_count = bagel_baked + baguette_baked;
     //output formats
     printf("\nBaking count: %d\n", baking_count);
     printf(" - Bagel baked: %d\n", bagel_baked);
@@ -221,6 +222,7 @@ int main(int argc, char *argv[])  {
 
     printf("\nHow many minutes to bake: %d\n", bakery_time);
 
+    performance = (baking_count * 1.0) / (bakery_time * 1.0);
     printf("\nPerformance (bakes/minutes): %.2f\n", performance);
 
     return 0;
