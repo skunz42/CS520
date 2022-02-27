@@ -10,7 +10,6 @@ int baking_count;
 float performance;
 
 enum RequestType {
-    INVALID_REQUEST=-1,
     NO_REQUEST=0,
     BAKE_BAGEL=1,
     BAKE_BAGUETTE=2,
@@ -19,8 +18,8 @@ enum RequestType {
 typedef struct {
     int minutes_until_free;
     int stage_num;
-    int has_request;
     int request_type;
 
-    int temp_request_type;
+    int wait_queue[1024];
+    int in_queue;
 } Stage;
