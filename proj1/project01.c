@@ -78,12 +78,35 @@ int count_lines(const char * filename) {
     return num_lines;
 }
 
-void compute_stage11() { }
+void compute_stage11() {
+    if (stages[11].in_queue > 0) {
+        for (int i = 0; i < stages[11].in_queue - 1; i++) {
+            stages[11].wait_queue[i] = stages[11].wait_queue[i+1];
+        }
+        stages[11].in_queue--;
+    }
+}
 
 // baking
-void compute_stage9() { }
+void compute_stage9() { 
+    if (stages[9].in_queue > 0) {
+        stages[10].wait_queue[stages[10].in_queue] = stages[9].wait_queue[0];
+        for (int i = 0; i < stages[9].in_queue - 1; i++) {
+            stages[9].wait_queue[i] = stages[9].wait_queue[i+1];
+        }
+        stages[9].in_queue--;
+    }
+}
 
-void compute_intermediate_stages(int active_stage) { }
+void compute_intermediate_stages(int active_stage) {
+    if (stages[active_stage].in_queue > 0) {
+        stages[active_stage+1].wait_queue[stages[active_stage+1].in_queue] = stages[active_stage].wait_queue[0];
+        for (int i = 0; i < stages[active_stage].in_queue - 1; i++) {
+            stages[active_stage].wait_queue[i] = stages[active_stage].wait_queue[i+1];
+        }
+        stages[active_stage].in_queue--;
+    }
+}
 
 // COMPUTE
 void compute_stage1(int * instructions_processed, int * input_array, int instruction_count) {
@@ -108,9 +131,12 @@ void compute_stage1(int * instructions_processed, int * input_array, int instruc
 void exec_pipeline(int active_stage, int * instructions_processed, int * input_array, int instruction_count) {
     if (active_stage == 0) {
         compute_stage1(instructions_processed, input_array, instruction_count);
-    } else if (active_stage == 8) {
+    } else if (active_stage == 9) {
+        compute_stage9();
     } else if (active_stage == 11) {
+        compute_stage11();
     } else {
+        compute_intermediate_stages(active_stage);
     }
 }
 
@@ -147,14 +173,14 @@ int main(int argc, char *argv[])  {
         // intermediate, take from queue and toss up
         // baking, take from queue or wait
         // TODO: make queue system work at basic level
-        if (instructions_processed == 20) break;
+        //if (instructions_processed == 20) break;
         for (int i = 0; i < NUM_STAGES; i++) {
             exec_pipeline(i, &instructions_processed, input_array, instruction_count);
         }
-        for (int i = 0; i < stages[0].in_queue; i++) {
+        /*for (int i = 0; i < stages[0].in_queue; i++) {
             printf("%d\t", stages[0].wait_queue[i]);
         }
-        printf("\n");
+        printf("\n");*/
         bakery_time++;
     }
 
