@@ -78,6 +78,23 @@ int count_lines(const char * filename) {
     return num_lines;
 }
 
+// COMPUTE
+void compute_stage1(int * instructions_processed, int * input_array, int instruction_count) {
+    // get new value from input
+    if (*instructions_processed < instruction_count) {
+        stages[0].wait_queue[stages[0].in_queue] = input_array[*instructions_processed];
+        stages[0].in_queue++;
+        *instructions_processed = *instructions_processed + 1;
+    }
+}
+
+void exec_pipeline(int active_stage, int * instructions_processed, int * input_array, int instruction_count) {
+    if (active_stage == 0) {
+        compute_stage1(instructions_processed, input_array, instruction_count);
+    }
+    //TODO
+}
+
 int main(int argc, char *argv[])  {
     if (argc != 2) {
         printf("Input in the form: ./baking_sim <trace_filename>\n");
@@ -111,6 +128,14 @@ int main(int argc, char *argv[])  {
         // intermediate, take from queue and toss up
         // baking, take from queue or wait
         // TODO: make queue system work at basic level
+        if (instructions_processed == 20) break;
+        for (int i = 0; i < NUM_STAGES; i++) {
+            exec_pipeline(i, &instructions_processed, input_array, instruction_count);
+        }
+        for (int i = 0; i < stages[0].in_queue; i++) {
+            printf("%d\t", stages[0].wait_queue[i]);
+        }
+        printf("\n");
         bakery_time++;
     }
 
