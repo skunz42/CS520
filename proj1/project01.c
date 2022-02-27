@@ -78,8 +78,25 @@ int count_lines(const char * filename) {
     return num_lines;
 }
 
+void compute_stage11() { }
+
+// baking
+void compute_stage9() { }
+
+void compute_intermediate_stages(int active_stage) { }
+
 // COMPUTE
 void compute_stage1(int * instructions_processed, int * input_array, int instruction_count) {
+    // throw to next stage
+    if (stages[0].in_queue > 0) {
+        stages[1].wait_queue[stages[1].in_queue] = stages[0].wait_queue[0];
+        for (int i = 0; i < stages[0].in_queue-1; i++) {
+            stages[0].wait_queue[i] = stages[0].wait_queue[i+1];
+        }
+        stages[0].in_queue--;
+    }
+
+    //TODO wait 10 min every 1k
     // get new value from input
     if (*instructions_processed < instruction_count) {
         stages[0].wait_queue[stages[0].in_queue] = input_array[*instructions_processed];
@@ -91,8 +108,10 @@ void compute_stage1(int * instructions_processed, int * input_array, int instruc
 void exec_pipeline(int active_stage, int * instructions_processed, int * input_array, int instruction_count) {
     if (active_stage == 0) {
         compute_stage1(instructions_processed, input_array, instruction_count);
+    } else if (active_stage == 8) {
+    } else if (active_stage == 11) {
+    } else {
     }
-    //TODO
 }
 
 int main(int argc, char *argv[])  {
