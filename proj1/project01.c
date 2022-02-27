@@ -5,12 +5,23 @@
 #define NUM_STAGES 12
 
 Stage stages[NUM_STAGES];
+int start_wait;
+int baking_stage_count;
 
 void print_stages() {
     for (int i = 0; i < NUM_STAGES; i++) {
-        printf("%d: %d\t", i, stages[i].request_type);
+        printf("%d: %d\t", i, stages[i].in_queue);
     }
     printf("\n");
+}
+
+int all_queues_empty() {
+    for (int i = 0; i < NUM_STAGES; i++) {
+        if (stages[i].in_queue > 0) {
+            return FALSE;
+        }
+    }
+    return TRUE;
 }
 
 // INITITALIZATION FUNCTIONS
@@ -90,17 +101,26 @@ void compute_stage11() {
 // baking
 void compute_stage9() { 
     if (stages[9].in_queue > 0) {
-        stages[10].wait_queue[stages[10].in_queue] = stages[9].wait_queue[0];
-        for (int i = 0; i < stages[9].in_queue - 1; i++) {
-            stages[9].wait_queue[i] = stages[9].wait_queue[i+1];
+        if (stages[9].wait_queue[0] == 2) {
+            stages[9].wait_queue[0]--;
+        } else if (baking_stage_count == 9) {
+            baking_stage_count = 0;
+        } else {
+            stages[10].wait_queue[stages[10].in_queue] = stages[9].wait_queue[0];
+            stages[10].in_queue++;
+            for (int i = 0; i < stages[9].in_queue - 1; i++) {
+                stages[9].wait_queue[i] = stages[9].wait_queue[i+1];
+            }
+            stages[9].in_queue--;
+            baking_stage_count++;
         }
-        stages[9].in_queue--;
     }
 }
 
 void compute_intermediate_stages(int active_stage) {
     if (stages[active_stage].in_queue > 0) {
         stages[active_stage+1].wait_queue[stages[active_stage+1].in_queue] = stages[active_stage].wait_queue[0];
+        stages[active_stage+1].in_queue++;
         for (int i = 0; i < stages[active_stage].in_queue - 1; i++) {
             stages[active_stage].wait_queue[i] = stages[active_stage].wait_queue[i+1];
         }
@@ -108,11 +128,11 @@ void compute_intermediate_stages(int active_stage) {
     }
 }
 
-// COMPUTE
 void compute_stage1(int * instructions_processed, int * input_array, int instruction_count) {
     // throw to next stage
     if (stages[0].in_queue > 0) {
         stages[1].wait_queue[stages[1].in_queue] = stages[0].wait_queue[0];
+        stages[1].in_queue++;
         for (int i = 0; i < stages[0].in_queue-1; i++) {
             stages[0].wait_queue[i] = stages[0].wait_queue[i+1];
         }
@@ -121,7 +141,13 @@ void compute_stage1(int * instructions_processed, int * input_array, int instruc
 
     //TODO wait 10 min every 1k
     // get new value from input
-    if (*instructions_processed < instruction_count) {
+    if (bakery_time%1000 == 0 && bakery_time != 0) {
+        start_wait = 10;
+        //printf("%d\n", bakery_time);
+    }
+    if (start_wait > 0) {
+        start_wait--;
+    } else if (*instructions_processed < instruction_count) {
         stages[0].wait_queue[stages[0].in_queue] = input_array[*instructions_processed];
         stages[0].in_queue++;
         *instructions_processed = *instructions_processed + 1;
@@ -164,16 +190,18 @@ int main(int argc, char *argv[])  {
 
     bakery_time = 0;
     int instructions_processed = 0;
+    start_wait = 0;
+    baking_count = 0;
 
     // Instructions left or still instructions in the pipeline
     // TODO finish pipe
-    while (instructions_processed < instruction_count) {
+    while (instructions_processed < instruction_count || !all_queues_empty()) {
         // for each stage
         // if i == 0, call initial function. if something in wait queue, pass to next level. get a new input and place in queue
         // intermediate, take from queue and toss up
         // baking, take from queue or wait
         // TODO: make queue system work at basic level
-        //if (instructions_processed == 20) break;
+        //if (instructions_processed == 400000) break;
         for (int i = 0; i < NUM_STAGES; i++) {
             exec_pipeline(i, &instructions_processed, input_array, instruction_count);
         }
@@ -181,6 +209,7 @@ int main(int argc, char *argv[])  {
             printf("%d\t", stages[0].wait_queue[i]);
         }
         printf("\n");*/
+        //print_stages();
         bakery_time++;
     }
 

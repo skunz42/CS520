@@ -20,6 +20,6 @@ typedef struct {
     int stage_num;
     int request_type;
 
-    int wait_queue[1024];
+    int wait_queue[1000000];
     int in_queue;
 } Stage;
