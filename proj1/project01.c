@@ -7,9 +7,11 @@
 Stage stages[NUM_STAGES];
 int start_wait;
 int baking_stage_count;
+int one_k_instructions;
 int times_stalled;
 
 int temp_bagel;
+int real_instructions_processed;
 
 void print_stages() {
     for (int i = 0; i < NUM_STAGES; i++) {
@@ -112,11 +114,12 @@ void compute_stage10() {
 // baking
 void compute_stage9() {
     //TODO something wrong here
-//    if (baking_stage_count == 9) {
-//        baking_stage_count = 0;
-//        stages[9].stalled = TRUE;
-//        return;
-//    }
+    if (baking_stage_count == 9) {
+        baking_stage_count = 0;
+        stages[9].stalled = TRUE;
+        stages[9].has_request = TRUE;
+        return;
+    }
     if (stages[9].has_request == TRUE) {
         if (stages[9].request == BAKE_BAGUETTE) {
             stages[9].stalled = TRUE;
@@ -134,7 +137,8 @@ void compute_stage9() {
 }
 
 void compute_intermediate_stages(int active_stage) {
-    if (stages[active_stage].has_request == TRUE && stages[active_stage+1].has_request == FALSE && stages[active_stage+1].stalled == FALSE) {
+    if ((stages[active_stage].has_request == TRUE && stages[active_stage+1].has_request == FALSE && stages[active_stage+1].stalled == FALSE) ||
+            (stages[active_stage].has_request == TRUE && stages[active_stage+1].has_request == TRUE && stages[active_stage+1].request == NO_REQUEST)) {
         stages[active_stage+1].request = stages[active_stage].request;
 //        if (stages[active_stage].request != NO_REQUEST) {
             stages[active_stage+1].has_request = TRUE;
@@ -142,16 +146,18 @@ void compute_intermediate_stages(int active_stage) {
 //            stages[active_stage+1].has_request = FALSE;
 //        }
         stages[active_stage].has_request = FALSE;
+        stages[active_stage].request = NO_REQUEST;
 //    } else if (stages[active_stage].in_queue == 0 && stages[active_stage+1].in_queue == 0) {
 //        stages[active_stage+1].wait_queue[0] = 0;
-    } else if (stages[active_stage+1].stalled == TRUE) {
-        stages[active_stage].stalled = TRUE;
+//    } else if (stages[active_stage+1].stalled == TRUE) {
+//        stages[active_stage].stalled = TRUE;
     }
 }
 
 void compute_stage1(int * instructions_processed, int * input_array, int instruction_count) {
     // throw to next stage
-    if (stages[0].has_request == TRUE && stages[1].has_request == FALSE && stages[1].stalled == FALSE) {
+    if ((stages[0].has_request == TRUE && stages[1].has_request == FALSE && stages[1].stalled == FALSE) ||
+            (stages[0].has_request == TRUE && stages[1].has_request == TRUE && stages[1].request == NO_REQUEST)) {
         stages[1].request = stages[0].request;
 //        if (stages[0].request != NO_REQUEST) {
             stages[1].has_request = TRUE;
@@ -159,34 +165,52 @@ void compute_stage1(int * instructions_processed, int * input_array, int instruc
 //            stages[1].has_request = FALSE;
 //        }
         stages[0].has_request = FALSE;
+        stages[0].request = NO_REQUEST;
 //    } else if (stages[0].in_queue == 0 && stages[1].in_queue == 0) {
 //        stages[1].wait_queue[0] = 0;
-    } else if (stages[1].stalled == TRUE) {
-        stages[0].stalled = TRUE;
+//    } else if (stages[1].stalled == TRUE) {
+//        stages[0].stalled = TRUE;
+    }
+    
+    if (one_k_instructions == 999 && start_wait <= 0) {
+        start_wait = 9;
+        stages[0].has_request = FALSE;
+        one_k_instructions = 0;
     }
 
-//    if (bakery_time%1000 == 999) {
-//        start_wait = 10;
-//    }
     // TODO fix this
-//    if (start_wait == 1) stages[0].in_queue = 0;
-//    if (start_wait > 0) {
-//        start_wait--;
+/*    if (start_wait > 0) {
+        start_wait--;
+//        printf("%d\n", start_wait);
+        if (start_wait == 0 || input_array[*instructions_processed] == NO_REQUEST) {
+            stages[0].request = input_array[*instructions_processed];
+            stages[0].has_request = TRUE;
+            if (stages[0].request != NO_REQUEST) {
+                real_instructions_processed++;
+            }
+            *instructions_processed = *instructions_processed + 1;
+            one_k_instructions++;
+        }
 //        printf("C");
 //        stages[0].wait_queue[0] = 0;
 //        stages[0].in_queue++;
-//    } else if (*instructions_processed < instruction_count && stages[0].in_queue == 0) {
+//    } else if (*instructions_processed < instruction_count && stages[0].has_request == FALSE) {*/
     if (*instructions_processed < instruction_count && stages[0].has_request == FALSE && stages[0].stalled == FALSE) {
 //        if (input_array[*instructions_processed] != 0) {
-            stages[0].request = input_array[*instructions_processed];
+        stages[0].request = input_array[*instructions_processed];
 //            if (stages[0].request != NO_REQUEST) {
-                stages[0].has_request = TRUE;
+        stages[0].has_request = TRUE;
+        if (stages[0].request != NO_REQUEST) {
+            real_instructions_processed++;
+        }
 //            } else {
 //                stages[0].has_request = FALSE;
 //            }
 //        }
         *instructions_processed = *instructions_processed + 1;
+        one_k_instructions++;
     }
+    
 }
 
 void exec_pipeline(int active_stage, int * instructions_processed, int * input_array, int instruction_count) {
@@ -232,6 +256,8 @@ int main(int argc, char *argv[])  {
     times_stalled = 0;
 
     temp_bagel = 0;
+    real_instructions_processed = 0;
+    one_k_instructions = 0;
 
     while (instructions_processed < instruction_count || !all_queues_empty()) {
         //if (instructions_processed == 1100) break;
