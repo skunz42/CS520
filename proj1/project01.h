@@ -16,10 +16,8 @@ enum RequestType {
 };
 
 typedef struct {
-    int minutes_until_free;
     int stage_num;
-    int request_type;
-
-    int wait_queue[1000000];
-    int in_queue;
+    int request;
+    int has_request;
+    int stalled;
 } Stage;
