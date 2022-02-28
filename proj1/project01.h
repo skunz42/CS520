@@ -19,5 +19,4 @@ typedef struct {
     int stage_num;
     int request;
     int has_request;
-    int stalled;
 } Stage;
