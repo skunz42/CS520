@@ -11,6 +11,7 @@ int one_k_instructions;
 int times_stalled;
 
 int temp_bagel;
+int temp_baguette;
 int real_instructions_processed;
 
 void print_stages() {
@@ -98,6 +99,8 @@ void compute_stage11() {
         stages[11].has_request = FALSE;
         if (stages[11].request == 1) {
             temp_bagel++;
+        } else if (stages[11].request == 2 || stages[11].request == 3) {
+            temp_baguette++;
         }
         stages[11].request = -1;
     }
@@ -114,8 +117,13 @@ void compute_stage10() {
 // baking
 void compute_stage9() {
     //TODO something wrong here
-    if (baking_stage_count == 9) {
+    if (baking_stage_count == 10) {
         baking_stage_count = 0;
+        if (stages[9].request == NO_REQUEST) {
+            stages[10].request = stages[9].request;
+            stages[10].has_request = TRUE;
+            stages[9].request = FALSE;
+        }
         return;
     }
     if (stages[9].has_request == TRUE) {
@@ -155,10 +163,16 @@ void compute_stage1(int * instructions_processed, int * input_array, int instruc
         stages[0].request = NO_REQUEST;
     }
     
-    if (one_k_instructions == 999 && start_wait <= 0) {
-        start_wait = 9;
-        stages[0].has_request = FALSE;
+    if (one_k_instructions == 1000 || start_wait > 0) {
+        if (one_k_instructions == 1000) start_wait = 10;
         one_k_instructions = 0;
+        start_wait--;
+        if (input_array[*instructions_processed] == NO_REQUEST) {
+            stages[0].has_request = TRUE;
+            *instructions_processed = *instructions_processed + 1;
+            //one_k_instructions++;
+        }
+        return;
     }
 
     // TODO fix this
@@ -180,10 +194,9 @@ void compute_stage1(int * instructions_processed, int * input_array, int instruc
         stages[0].request = input_array[*instructions_processed];
         stages[0].has_request = TRUE;
         if (stages[0].request != NO_REQUEST) {
-            real_instructions_processed++;
+            one_k_instructions++;
         }
         *instructions_processed = *instructions_processed + 1;
-        one_k_instructions++;
     }
     
 }
@@ -231,6 +244,7 @@ int main(int argc, char *argv[])  {
     times_stalled = 0;
 
     temp_bagel = 0;
+    temp_baguette = 0;
     real_instructions_processed = 0;
     one_k_instructions = 0;
 
@@ -253,7 +267,8 @@ int main(int argc, char *argv[])  {
     }
 
     printf("%d\n", temp_bagel+remainder);*/
-    printf("%d\n", temp_bagel);
+    printf("%d\t%d\n", temp_bagel, temp_baguette);
+    bakery_time -= 2;
 
     baking_count = bagel_baked + baguette_baked;
     //output formats
