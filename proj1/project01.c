@@ -170,27 +170,12 @@ void compute_stage1(int * instructions_processed, int * input_array, int instruc
         if (input_array[*instructions_processed] == NO_REQUEST) {
             stages[0].has_request = TRUE;
             *instructions_processed = *instructions_processed + 1;
-            //one_k_instructions++;
         }
         return;
     }
 
-    // TODO fix this
-/*    if (start_wait > 0) {
-        start_wait--;
-//        printf("%d\n", start_wait);
-        if (start_wait == 0 || input_array[*instructions_processed] == NO_REQUEST) {
-            stages[0].request = input_array[*instructions_processed];
-            stages[0].has_request = TRUE;
-            if (stages[0].request != NO_REQUEST) {
-                real_instructions_processed++;
-            }
-            *instructions_processed = *instructions_processed + 1;
-            one_k_instructions++;
-        }
-//        printf("C");
-//    } else if (*instructions_processed < instruction_count && stages[0].has_request == FALSE) {*/
-    if (*instructions_processed < instruction_count && stages[0].has_request == FALSE) {
+    if ((*instructions_processed < instruction_count && stages[0].has_request == FALSE) ||
+            (*instructions_processed < instruction_count && stages[0].has_request == TRUE && stages[0].request == NO_REQUEST)) {
         stages[0].request = input_array[*instructions_processed];
         stages[0].has_request = TRUE;
         if (stages[0].request != NO_REQUEST) {
@@ -249,7 +234,7 @@ int main(int argc, char *argv[])  {
     one_k_instructions = 0;
 
     while (instructions_processed < instruction_count || !all_queues_empty()) {
-        //if (instructions_processed == 1100) break;
+        if (instructions_processed == 1100) break;
         for (int i = NUM_STAGES-1; i >= 0; i--) {
             exec_pipeline(i, &instructions_processed, input_array, instruction_count);
         }
@@ -268,7 +253,7 @@ int main(int argc, char *argv[])  {
 
     printf("%d\n", temp_bagel+remainder);*/
     printf("%d\t%d\n", temp_bagel, temp_baguette);
-    bakery_time -= 2;
+    //bakery_time -= 2;
 
     baking_count = bagel_baked + baguette_baked;
     //output formats
