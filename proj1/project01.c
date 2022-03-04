@@ -14,9 +14,23 @@ int temp_bagel;
 int temp_baguette;
 int real_instructions_processed;
 
+int BAKING_STALLED;
+
+const char *stage_names[12] = {"scaling", "mixing", "fermentation", "folding", "dividing", "rounding",
+    "resting", "shaping", "proofing", "baking", "cooling", "stocking"};
+
+const char *request_names[4] = {"No_Request", "Bake_Bagel", "Bake_Baguette", "Bake_Baguette"};
+
 void print_stages() {
-    for (int i = 0; i < NUM_STAGES; i++) {
-        printf("%d: %d\t", i, stages[i].request);
+    printf("current bakery time: %d\n", bakery_time);
+    for (int i = NUM_STAGES-1; i >= 0; i--) {
+        if (stages[i].request != NO_REQUEST || (stages[i].request == NO_REQUEST && i == 0)) {
+            printf("[%d] %s %s\n", i+1, stage_names[i], request_names[stages[i].request]);
+        }
+
+        if (i == 9 && BAKING_STALLED) {
+            printf("[10] baking stall\n");
+        }
     }
     printf("\n");
 }
@@ -102,7 +116,7 @@ void compute_stage11() {
         } else if (stages[11].request == 2 || stages[11].request == 3) {
             temp_baguette++;
         }
-        stages[11].request = -1;
+        stages[11].request = 0;
     }
 }
 
@@ -124,6 +138,7 @@ void compute_stage9() {
             stages[10].has_request = TRUE;
             stages[9].request = FALSE;
         }
+        BAKING_STALLED = TRUE;
         return;
     }
     if (stages[9].has_request == TRUE) {
@@ -234,12 +249,13 @@ int main(int argc, char *argv[])  {
     one_k_instructions = 0;
 
     while (instructions_processed < instruction_count || !all_queues_empty()) {
-        if (instructions_processed == 1100) break;
+        //if (instructions_processed == 1100) break;
         for (int i = NUM_STAGES-1; i >= 0; i--) {
             exec_pipeline(i, &instructions_processed, input_array, instruction_count);
         }
         //print_stages();
         bakery_time++;
+        BAKING_STALLED = FALSE;
     }
 
     //TODO Fix stuff left in pipe after while loop ends
@@ -252,7 +268,7 @@ int main(int argc, char *argv[])  {
     }
 
     printf("%d\n", temp_bagel+remainder);*/
-    printf("%d\t%d\n", temp_bagel, temp_baguette);
+    //printf("%d\t%d\n", temp_bagel, temp_baguette);
     //bakery_time -= 2;
 
     baking_count = bagel_baked + baguette_baked;

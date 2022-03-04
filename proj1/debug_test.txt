@@ -1,0 +1,9 @@
+
+Baking count: 303780
+ - Bagel baked: 303780
+ - Baguette baked: 0
+No request: 178301
+
+How many minutes to bake: 485248
+
+Performance (bakes/minutes): 0.63
