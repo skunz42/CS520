@@ -4,6 +4,18 @@
 #define TRUE 1
 #define NUM_STAGES 12
 
+enum RequestType {
+    NO_REQUEST=0,
+    BAKE_BAGEL=1,
+    BAKE_BAGUETTE=2,
+};
+
+typedef struct {
+    int stage_num;
+    int request;
+    int has_request;
+} Stage;
+
 Stage stages[NUM_STAGES];
 int start_wait;
 int baking_stage_count;
