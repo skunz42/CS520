@@ -34,6 +34,7 @@ typedef struct {
 } Stage;
 
 Stage stages[NUM_STAGES];
+int registers[REG_COUNT];
 
 void Simple_Pipe::print_regs(){
     printf("\nRegisters: \n");
@@ -92,13 +93,14 @@ long calc_input_size(const char * filename) {
     fseek(fp, 0L, SEEK_END);
     long sz = ftell(fp);
     fclose(fp);
+
     return sz / INSTR_SIZE;
 }
 
 int read_input(const char * filename, unsigned int *input_array, long array_length) {
     FILE *fp;
     
-    fp = fopen(filename, "r");
+    fp = fopen(filename, "rb");
     if (fp == NULL) {
         printf("Could not open file %s\n", filename);
         return -1;
@@ -107,27 +109,95 @@ int read_input(const char * filename, unsigned int *input_array, long array_leng
     for (int i = 0; i < array_length; i++) {
         int n = fread(input_array+i, 1, INSTR_SIZE, fp);
         if (n == INSTR_SIZE) {
-            printf("%x\n", input_array[i]);
+//            printf("%x\n", input_array[i]);
         } else {
+            printf("%d\n", n);
             printf("Error reading file.\n");
             return -1;
         }
     }
 
     fclose(fp);
+
     return 0;
 }
 
-void compute_execution() {
+void execute_helper(Instruction instr) {
+    unsigned char opcode = instr.opcode;
+    switch(opcode) {
+        case 0x00:
+            registers[instr.destination] = instr.left_op;
+            break;
+        case 0x10:
+            registers[instr.destination] = registers[instr.left_op] + registers[instr.right_op];
+            break;
+        case 0x11:
+            registers[instr.destination] = registers[instr.left_op] + instr.right_op;
+            break;
+        case 0x20:
+            registers[instr.destination] = registers[instr.left_op] - registers[instr.right_op];
+            break;
+        case 0x21:
+            registers[instr.destination] = registers[instr.left_op] - instr.right_op;
+            break;
+        default:
+            printf("Shoild not have gotten here!!!!!\n");
+            break;
+    }
+}
 
+void compute_execution() {
+    if (stages[2].has_request == TRUE) {
+        //TODO execute, stalls, registers
+        stages[2].has_request = FALSE;
+        execute_helper(stages[2].decoded_instr);
+    }
+    // TODO else - cycle timer
+}
+
+Instruction decode_helper(unsigned int raw_instr) {
+    unsigned char ops[INSTR_SIZE];
+
+//    printf("RAW: %x ", raw_instr);
+
+    for (int i = 0; i < INSTR_SIZE; i++) {
+        ops[i] = raw_instr & 0xff;
+        raw_instr >>= 8;
+    }
+//    for (int i = INSTR_SIZE-1; i >= 0; i--) {
+//        printf("%x ", ops[i]);
+//    }
+//    printf("\n");
+    Instruction instr = {ops[3], ops[2], ops[1], ops[0]};
+    return instr;
 }
 
 void compute_decode() {
+    if (stages[1].has_request == TRUE && stages[2].has_request == FALSE) {
+        //TODO decode
+        stages[1].decoded_instr = decode_helper(stages[1].raw_instr);
 
+        stages[2].raw_instr = stages[1].raw_instr;
+        stages[2].has_request = TRUE;
+        stages[2].decoded_instr = stages[1].decoded_instr;
+        stages[1].has_request = FALSE;
+    }
 }
 
 void compute_fetch(long * instructions_processed, unsigned int * input_array, long instruction_count) {
-    *instructions_processed = *instructions_processed + 1;
+    if (stages[0].has_request == TRUE && stages[1].has_request == FALSE) {
+        stages[1].raw_instr = stages[0].raw_instr;
+        stages[1].has_request = TRUE;
+        stages[0].has_request = FALSE;
+    }
+
+    if (*instructions_processed < instruction_count && stages[0].has_request == FALSE)  {
+        stages[0].raw_instr = input_array[*instructions_processed];
+        stages[0].has_request = TRUE;
+        *instructions_processed = *instructions_processed + 1;
+    } else if (*instructions_processed >= instruction_count && stages[0].has_request == FALSE) {
+        stages[0].raw_instr = 0;
+    }
 }
 
 void exec_pipeline(int active_stage, long * instructions_processed, unsigned int * input_array, long instruction_count) {
@@ -140,6 +210,21 @@ void exec_pipeline(int active_stage, long * instructions_processed, unsigned int
     }
 }
 
+void print_debug_statement(unsigned int * input_array) {
+    if (stages[2].has_request || stages[1].has_request || stages[0].has_request) {
+        printf("\nexecution time: %d\n", execution_time);
+    }
+    if (stages[2].has_request == TRUE) {
+        printf("[3] executing: %x current cycle: 1 cycle needed: 1\n", stages[2].raw_instr);
+    }
+    if (stages[1].has_request == TRUE) {
+        printf("[2] decoding: %x\n", stages[1].raw_instr);
+    }
+    if (stages[0].has_request == TRUE) {
+        printf("[1] fetching: %x\n", stages[0].raw_instr);
+    }
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         printf("Input in the form: ./simple_pipe <trace file>\n");
@@ -148,6 +233,13 @@ int main(int argc, char *argv[]) {
 
     const char * filename = argv[1];
 
+    //Initialize registers
+    Simple_Pipe simple_pipe;
+    for(int i = 0; i < REG_COUNT; i++){
+        simple_pipe.registers[i] = 0;
+        registers[i] = 0;
+    }
+
     // Calculate the number of instructions
     long num_instructions = calc_input_size(filename);
     if (num_instructions < 0) {
@@ -155,12 +247,12 @@ int main(int argc, char *argv[]) {
     }
 
     // Read input
-    unsigned int input_array[num_instructions];
+    unsigned int input_array[num_instructions] = {0};
     int input_rv = read_input(filename, input_array, num_instructions);
     if (input_rv < 0) {
         return input_rv;
     }
-
+    
     // Initialize the three stages
     initialize_stages();
 
@@ -171,15 +263,12 @@ int main(int argc, char *argv[]) {
         for (int i = NUM_STAGES-1; i >= 0; i--) {
             exec_pipeline(i, &instructions_processed, input_array, num_instructions);
         }
+//        print_debug_statement(input_array);
         execution_time++;
     }
 
-    /*Simple_Pipe simple_pipe;
-    for(int i = 0; i < REG_COUNT; i++){
-        simple_pipe.registers[i] = 0;
-    }
 
-    simple_pipe.print_regs();
+    /*simple_pipe.print_regs();
     std::cout << "Total execution cycles: " << execution_time << std::endl;
     std::cout << "\nIPC: " << (request_done/(double)execution_time) << std::endl << std::endl;*/
 
