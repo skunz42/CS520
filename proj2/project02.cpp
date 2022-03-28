@@ -36,6 +36,9 @@ typedef struct {
 Stage stages[NUM_STAGES];
 int registers[REG_COUNT];
 
+int CYCLE_STALL;
+int FRESH_INSTR;
+
 void Simple_Pipe::print_regs(){
     printf("\nRegisters: \n");
     std::cout << "----------------------------------------" << std::endl;
@@ -127,32 +130,79 @@ void execute_helper(Instruction instr) {
     switch(opcode) {
         case 0x00:
             registers[instr.destination] = instr.left_op;
+            CYCLE_STALL = 1;
             break;
         case 0x10:
             registers[instr.destination] = registers[instr.left_op] + registers[instr.right_op];
+            CYCLE_STALL = 1;
             break;
         case 0x11:
             registers[instr.destination] = registers[instr.left_op] + instr.right_op;
+            CYCLE_STALL = 1;
             break;
         case 0x20:
             registers[instr.destination] = registers[instr.left_op] - registers[instr.right_op];
+            CYCLE_STALL = 1;
             break;
         case 0x21:
             registers[instr.destination] = registers[instr.left_op] - instr.right_op;
+            CYCLE_STALL = 1;
+            break;
+        case 0x30:
+            if (FRESH_INSTR == TRUE) {
+                CYCLE_STALL = 2;
+                FRESH_INSTR = FALSE;
+            }
+            if (CYCLE_STALL == 1) {
+                registers[instr.destination] = registers[instr.left_op] * registers[instr.right_op];
+                FRESH_INSTR = TRUE;
+            }
+            break;
+        case 0x31:
+            if (FRESH_INSTR == TRUE) {
+                CYCLE_STALL = 2;
+                FRESH_INSTR = FALSE;
+            }
+            if (CYCLE_STALL == 1) {
+                registers[instr.destination] = registers[instr.left_op] * instr.right_op;
+                FRESH_INSTR = TRUE;
+            }
+            break;
+        case 0x40:
+            if (FRESH_INSTR == TRUE) {
+                CYCLE_STALL = 4;
+                FRESH_INSTR = FALSE;
+            }
+            if (CYCLE_STALL == 1) {
+                registers[instr.destination] = registers[instr.left_op] / registers[instr.right_op];
+                FRESH_INSTR = TRUE;
+            }
+            break;
+        case 0x41:
+            if (FRESH_INSTR == TRUE) {
+                CYCLE_STALL = 4;
+                FRESH_INSTR = FALSE;
+            }
+            if (CYCLE_STALL == 1) {
+                registers[instr.destination] = registers[instr.left_op] / instr.right_op;
+                FRESH_INSTR = TRUE;
+            }
             break;
         default:
-            printf("Shoild not have gotten here!!!!!\n");
+            printf("Should not have gotten here!!!!!\n");
             break;
     }
+
+    CYCLE_STALL--;
 }
 
 void compute_execution() {
     if (stages[2].has_request == TRUE) {
-        //TODO execute, stalls, registers
-        stages[2].has_request = FALSE;
         execute_helper(stages[2].decoded_instr);
-    }
-    // TODO else - cycle timer
+        if (CYCLE_STALL <= 0) {
+            stages[2].has_request = FALSE;
+        }
+    } 
 }
 
 Instruction decode_helper(unsigned int raw_instr) {
@@ -174,7 +224,6 @@ Instruction decode_helper(unsigned int raw_instr) {
 
 void compute_decode() {
     if (stages[1].has_request == TRUE && stages[2].has_request == FALSE) {
-        //TODO decode
         stages[1].decoded_instr = decode_helper(stages[1].raw_instr);
 
         stages[2].raw_instr = stages[1].raw_instr;
@@ -257,6 +306,8 @@ int main(int argc, char *argv[]) {
     initialize_stages();
 
     long instructions_processed = 0;
+    CYCLE_STALL = 0;
+    FRESH_INSTR = TRUE;
 
     // execute
     while (instructions_processed < num_instructions || !all_stages_empty()) {
@@ -267,10 +318,16 @@ int main(int argc, char *argv[]) {
         execution_time++;
     }
 
+    for (int i = 0; i < REG_COUNT; i++) {
+        simple_pipe.registers[i] = registers[i];
+    }
 
-    /*simple_pipe.print_regs();
+    execution_time--;
+    request_done = num_instructions;
+
+    simple_pipe.print_regs();
     std::cout << "Total execution cycles: " << execution_time << std::endl;
-    std::cout << "\nIPC: " << (request_done/(double)execution_time) << std::endl << std::endl;*/
+    std::cout << "\nIPC: " << (request_done/(double)execution_time) << std::endl << std::endl;
 
     return 0;
 }
