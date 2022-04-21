@@ -107,8 +107,64 @@ int all_stages_empty() {
     return TRUE;
 }
 
+void compute_writeback() {
+    if (stages[8].has_request == TRUE) {
+        stages[8].has_request = FALSE;
+    }
+}
+
+void compute_mem2() {
+    if (stages[7].has_request == TRUE && stages[8].has_request == FALSE) {
+        stages[8].raw_instr = stages[7].raw_instr;
+        stages[8].has_request = TRUE;
+        stages[8].decoded_instr = stages[7].decoded_instr;
+        stages[7].has_request = FALSE;
+    }
+}
+
+void compute_mem1() {
+    if (stages[6].has_request == TRUE && stages[7].has_request == FALSE) {
+        stages[7].raw_instr = stages[6].raw_instr;
+        stages[7].has_request = TRUE;
+        stages[7].decoded_instr = stages[6].decoded_instr;
+        stages[6].has_request = FALSE;
+    }
+}
+
+void compute_ex2() {
+    if (stages[5].has_request == TRUE && stages[6].has_request == FALSE) {
+        stages[6].raw_instr = stages[5].raw_instr;
+        stages[6].has_request = TRUE;
+        stages[6].decoded_instr = stages[5].decoded_instr;
+        stages[5].has_request = FALSE;
+    }
+}
+
+void compute_branch() {
+    if (stages[4].has_request == TRUE && stages[5].has_request == FALSE) {
+        stages[5].raw_instr = stages[4].raw_instr;
+        stages[5].has_request = TRUE;
+        stages[5].decoded_instr = stages[4].decoded_instr;
+        stages[4].has_request = FALSE;
+    }
+}
+
+void compute_ex1() {
+    if (stages[3].has_request == TRUE && stages[4].has_request == FALSE) {
+        stages[4].raw_instr = stages[3].raw_instr;
+        stages[4].has_request = TRUE;
+        stages[4].decoded_instr = stages[3].decoded_instr;
+        stages[3].has_request = FALSE;
+    }
+}
+
 void compute_analyze() {
-    stages[2].has_request = FALSE;
+    if (stages[2].has_request == TRUE && stages[3].has_request == FALSE) {
+        stages[3].raw_instr = stages[2].raw_instr;
+        stages[3].has_request = TRUE;
+        stages[3].decoded_instr = stages[2].decoded_instr;
+        stages[2].has_request = FALSE;
+    }
 }
 
 Instruction decode_helper(unsigned int raw_instr) {
@@ -162,6 +218,18 @@ void exec_pipeline(int active_stage, long * instructions_processed, unsigned int
         compute_decode();
     } else if (active_stage == 2) {
         compute_analyze();
+    } else if (active_stage == 3) {
+        compute_ex1();
+    } else if (active_stage == 4) {
+        compute_branch();
+    } else if (active_stage == 5) {
+        compute_ex2();
+    } else if (active_stage == 6) {
+        compute_mem1();
+    } else if (active_stage == 7) {
+        compute_mem2();
+    } else if (active_stage == 8) {
+        compute_writeback();
     }
 }
 
@@ -203,7 +271,6 @@ int main(int argc, char const *argv[]){
     
     // execute
     while (instructions_processed < num_instructions || !all_stages_empty()) {
-        printf("%d\t%d\n", instructions_processed < num_instructions, !all_stages_empty());
         for (int i = NUM_STAGES-1; i >= 0; i--) {
             exec_pipeline(i, &instructions_processed, input_array, num_instructions);
         }
