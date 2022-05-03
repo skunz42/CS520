@@ -10,8 +10,8 @@
 
 enum Opcode {
     SET = 0x00,
-    ADD = 0x11,
-    ADDI = 0x12,
+    ADD = 0x10,
+    ADDI = 0x11,
     SUB = 0x20,
     SUBI = 0x21,
     MUL = 0x30,
@@ -150,22 +150,83 @@ void compute_branch() {
     }
 }
 
-void compute_ex1() {
+void execute_helper(Instruction instr, int * registers) {
+    unsigned char opcode = instr.opcode;
+    switch (opcode) {
+        case SET:
+            registers[instr.destination] = instr.immediate;
+            break;
+        case ADD:
+            registers[instr.destination] = registers[instr.left_op] + registers[instr.right_op];
+            break;
+        case ADDI:
+            registers[instr.destination] = registers[instr.left_op] + instr.right_op;
+            break;
+        case SUB:
+            registers[instr.destination] = registers[instr.left_op] - registers[instr.right_op];
+            break;
+        case SUBI:
+            registers[instr.destination] = registers[instr.left_op] - instr.right_op;
+            break;
+        case MUL:
+            registers[instr.destination] = registers[instr.left_op] * registers[instr.right_op];
+            break;
+        case MULI:
+            registers[instr.destination] = registers[instr.left_op] * instr.right_op;
+            break;
+        case DIV:
+            registers[instr.destination] = registers[instr.left_op] / registers[instr.right_op];
+            break;
+        case DIVI:
+            registers[instr.destination] = registers[instr.left_op] / instr.right_op;
+            break;
+        case LD:
+            break;
+        case LDI:
+            break;
+        case ST:
+            break;
+        case STI:
+            break;
+        case BEZ:
+            break;
+        case BGEZ:
+            break;
+        case BLEZ:
+            break;
+        case BGTZ:
+            break;
+        case BLTZ:
+            break;
+        case RET:
+            break;
+        default:
+            printf("%x\n", opcode);
+            printf("Should not have gotten here!\n");
+            break;
+    }
+
+}
+
+void compute_ex1(int * registers) {
     if (stages[3].has_request == TRUE && stages[4].has_request == FALSE) {
         stages[4].raw_instr = stages[3].raw_instr;
         stages[4].has_request = TRUE;
         stages[4].decoded_instr = stages[3].decoded_instr;
         stages[3].has_request = FALSE;
+        
+        execute_helper(stages[3].decoded_instr, registers);
     }
 }
 
-void compute_analyze() {
+void compute_analyze(int * registers) {
     if (stages[2].has_request == TRUE && stages[3].has_request == FALSE) {
         stages[3].raw_instr = stages[2].raw_instr;
         stages[3].has_request = TRUE;
         stages[3].decoded_instr = stages[2].decoded_instr;
         stages[2].has_request = FALSE;
     }
+    //TODO handle true dependence
 }
 
 Instruction decode_helper(unsigned int raw_instr) {
@@ -187,7 +248,7 @@ Instruction decode_helper(unsigned int raw_instr) {
     if (ops[3] == SET || ops[3] == LD || ops[3] == ST || ops[3] == BEZ ||
             ops[3] == BGEZ || ops[3] == BLEZ || ops[3] == BGTZ || ops[3] == BLTZ) {
         imm = (((unsigned short)ops[2]) << 8) | ops[1];
-        printf("%x: %x %x\n", imm, ops[2], ops[1]);
+//        printf("%x: %x %x\n", imm, ops[2], ops[1]);
     }
     Instruction instr = {ops[3], ops[2], ops[1], ops[0], imm};
     return instr;
@@ -220,15 +281,15 @@ void compute_fetch(long * instructions_processed, unsigned int * input_array, lo
     }
 }
 
-void exec_pipeline(int active_stage, long * instructions_processed, unsigned int * input_array, long instruction_count) {
+void exec_pipeline(int active_stage, long * instructions_processed, unsigned int * input_array, long instruction_count, int * regs) {
     if (active_stage == 0) {
         compute_fetch(instructions_processed, input_array, instruction_count);
     } else if (active_stage == 1) {
         compute_decode();
     } else if (active_stage == 2) {
-        compute_analyze();
+        compute_analyze(regs);
     } else if (active_stage == 3) {
-        compute_ex1();
+        compute_ex1(regs);
     } else if (active_stage == 4) {
         compute_branch();
     } else if (active_stage == 5) {
@@ -281,7 +342,7 @@ int main(int argc, char const *argv[]){
     // execute
     while (instructions_processed < num_instructions || !all_stages_empty()) {
         for (int i = NUM_STAGES-1; i >= 0; i--) {
-            exec_pipeline(i, &instructions_processed, input_array, num_instructions);
+            exec_pipeline(i, &instructions_processed, input_array, num_instructions, regs);
         }
 //        print_debug_statement(input_array);
         execution_cycles++;
