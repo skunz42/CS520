@@ -35,6 +35,7 @@ typedef struct {
     unsigned char destination;
     unsigned char left_op;
     unsigned char right_op;
+    unsigned short immediate;
 } Instruction;
 
 typedef struct {
@@ -180,7 +181,15 @@ Instruction decode_helper(unsigned int raw_instr) {
 //        printf("%x ", ops[i]);
 //    }
 //    printf("\n");
-    Instruction instr = {ops[3], ops[2], ops[1], ops[0]};
+
+    unsigned short imm = 0;
+
+    if (ops[3] == SET || ops[3] == LD || ops[3] == ST || ops[3] == BEZ ||
+            ops[3] == BGEZ || ops[3] == BLEZ || ops[3] == BGTZ || ops[3] == BLTZ) {
+        imm = (((unsigned short)ops[2]) << 8) | ops[1];
+        printf("%x: %x %x\n", imm, ops[2], ops[1]);
+    }
+    Instruction instr = {ops[3], ops[2], ops[1], ops[0], imm};
     return instr;
 }
 
