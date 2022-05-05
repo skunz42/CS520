@@ -226,7 +226,7 @@ void compute_analyze(int * registers) {
         stages[3].decoded_instr = stages[2].decoded_instr;
         stages[2].has_request = FALSE;
     }
-    //TODO handle true dependence
+    //TODO handle true dependence and control hazards
 }
 
 Instruction decode_helper(unsigned int raw_instr) {
