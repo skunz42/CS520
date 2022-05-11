@@ -108,50 +108,10 @@ int all_stages_empty() {
     return TRUE;
 }
 
-void compute_writeback() {
-    if (stages[8].has_request == TRUE) {
-        stages[8].has_request = FALSE;
-    }
-}
-
-void compute_mem2() {
-    if (stages[7].has_request == TRUE && stages[8].has_request == FALSE) {
-        stages[8].raw_instr = stages[7].raw_instr;
-        stages[8].has_request = TRUE;
-        stages[8].decoded_instr = stages[7].decoded_instr;
-        stages[7].has_request = FALSE;
-    }
-}
-
-void compute_mem1() {
-    if (stages[6].has_request == TRUE && stages[7].has_request == FALSE) {
-        stages[7].raw_instr = stages[6].raw_instr;
-        stages[7].has_request = TRUE;
-        stages[7].decoded_instr = stages[6].decoded_instr;
-        stages[6].has_request = FALSE;
-    }
-}
-
-void compute_ex2() {
-    if (stages[5].has_request == TRUE && stages[6].has_request == FALSE) {
-        stages[6].raw_instr = stages[5].raw_instr;
-        stages[6].has_request = TRUE;
-        stages[6].decoded_instr = stages[5].decoded_instr;
-        stages[5].has_request = FALSE;
-    }
-}
-
-void compute_branch() {
-    if (stages[4].has_request == TRUE && stages[5].has_request == FALSE) {
-        stages[5].raw_instr = stages[4].raw_instr;
-        stages[5].has_request = TRUE;
-        stages[5].decoded_instr = stages[4].decoded_instr;
-        stages[4].has_request = FALSE;
-    }
-}
-
+//TODO finish
 void execute_helper(Instruction instr, int * registers) {
     unsigned char opcode = instr.opcode;
+//    printf("Opcode: %x\t %x %x\n", opcode, instr.left_op, instr.right_op);
     switch (opcode) {
         case SET:
             registers[instr.destination] = instr.immediate;
@@ -208,6 +168,58 @@ void execute_helper(Instruction instr, int * registers) {
 
 }
 
+
+//TODO
+void compute_writeback(int * regs) {
+    if (stages[8].has_request == TRUE) {
+        stages[8].has_request = FALSE;
+    }
+}
+
+//TODO
+void compute_mem2() {
+    if (stages[7].has_request == TRUE && stages[8].has_request == FALSE) {
+        stages[8].raw_instr = stages[7].raw_instr;
+        stages[8].has_request = TRUE;
+        stages[8].decoded_instr = stages[7].decoded_instr;
+        stages[7].has_request = FALSE;
+    }
+}
+
+//TODO
+void compute_mem1() {
+    if (stages[6].has_request == TRUE && stages[7].has_request == FALSE) {
+        stages[7].raw_instr = stages[6].raw_instr;
+        stages[7].has_request = TRUE;
+        stages[7].decoded_instr = stages[6].decoded_instr;
+        stages[6].has_request = FALSE;
+    }
+}
+
+//TODO move over
+void compute_ex2(int * registers) {
+    if (stages[5].has_request == TRUE && stages[6].has_request == FALSE) {
+        stages[6].raw_instr = stages[5].raw_instr;
+        stages[6].has_request = TRUE;
+        stages[6].decoded_instr = stages[5].decoded_instr;
+        stages[5].has_request = FALSE;
+        
+        if (stages[5].decoded_instr.opcode >= MUL && stages[5].decoded_instr.opcode <= DIVI) {
+            execute_helper(stages[5].decoded_instr, registers);
+        }
+    }
+}
+
+//TODO
+void compute_branch() {
+    if (stages[4].has_request == TRUE && stages[5].has_request == FALSE) {
+        stages[5].raw_instr = stages[4].raw_instr;
+        stages[5].has_request = TRUE;
+        stages[5].decoded_instr = stages[4].decoded_instr;
+        stages[4].has_request = FALSE;
+    }
+}
+
 void compute_ex1(int * registers) {
     if (stages[3].has_request == TRUE && stages[4].has_request == FALSE) {
         stages[4].raw_instr = stages[3].raw_instr;
@@ -215,7 +227,9 @@ void compute_ex1(int * registers) {
         stages[4].decoded_instr = stages[3].decoded_instr;
         stages[3].has_request = FALSE;
         
-        execute_helper(stages[3].decoded_instr, registers);
+        if (stages[3].decoded_instr.opcode >= SET && stages[3].decoded_instr.opcode <= SUBI) {
+            execute_helper(stages[3].decoded_instr, registers);
+        }
     }
 }
 
@@ -293,13 +307,13 @@ void exec_pipeline(int active_stage, long * instructions_processed, unsigned int
     } else if (active_stage == 4) {
         compute_branch();
     } else if (active_stage == 5) {
-        compute_ex2();
+        compute_ex2(regs);
     } else if (active_stage == 6) {
         compute_mem1();
     } else if (active_stage == 7) {
         compute_mem2();
     } else if (active_stage == 8) {
-        compute_writeback();
+        compute_writeback(regs);
     }
 }
 
@@ -355,6 +369,8 @@ int main(int argc, char const *argv[]){
         printf("--------------------------------\n");
     }
     printf("================================\n\n");
+
+    completed_instructions = instructions_processed;
 
 
     printf("Stalled cycles due to data hazard: %d \n", data_hazard_count);
